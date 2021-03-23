@@ -1,97 +1,61 @@
+# This is just for the UI portion
+from PyQt5 import QtCore, QtGui, QtWidgets
 import numpy as np
-
-def findNextEmpty(grid):
-    indexes = np.where(grid == 0)
-    if len(indexes[0]) != 0:
-        rowIndex = indexes[0][0] 
-        columnIndex = indexes[1][0]
-    else:
-        rowIndex = -1
-        columnIndex = -1
-    return rowIndex, columnIndex
-def getBlock(rowIndex, columnIndex, grid):
-    blockRows = []
-    blockColumns = []
-    block = []
-    # Ugly if statements but I'm too lazy to do anything about it B)
-    if rowIndex in range(0,3):
-        blockRows = [0,1,2]
-    if columnIndex in range(0,3):
-        blockColumns = [0,1,2]
-    if rowIndex in range(3,6):
-        blockRows = [3,4,5]
-    if columnIndex in range(3,6):
-        blockColumns = [3,4,5]
-    if rowIndex in range(6,9):
-        blockRows = [6,7,8]
-    if columnIndex in range(6,9):
-        blockColumns = [6,7,8]
-    for row in blockRows:
-        for col in blockColumns:
-            value = grid[row][col]
-            if value != 0:
-                block.append(value)
-    return np.array(block)
-    
-def solve(grid):
-    rowIndex, columnIndex = findNextEmpty(grid)
-    row = grid[rowIndex]
-    column = np.array([row[columnIndex] for row in grid])
-    block = getBlock(rowIndex, columnIndex, grid)
-    gridSolved = False
-    if rowIndex == -1:
-        return grid.tolist()
-    for i in range(1,10):
-        if i not in row and i not in column and i not in block:
-            grid[rowIndex][columnIndex] = i
-            solvedGrid = solve(grid)
-            if solvedGrid == False:
-                grid[rowIndex][columnIndex] = 0
-                continue
-            else:
-                return solvedGrid
-            gridSolved = True
-        if i == 9 and gridSolved == False:
-            return False
-    return False
-
-# Demo Sudoku Puzzles
-grid0 = np.array([[0,0,0,0,0,9,4,0,0],
-                [0,0,0,0,0,0,7,2,0],
-                [1,0,0,5,2,0,0,0,0],
-                [0,0,0,7,0,0,5,3,0],
-                [0,1,4,8,0,0,2,6,0],
-                [0,0,0,0,0,3,0,0,0],
-                [7,4,5,1,0,0,0,0,0],
-                [0,0,0,0,6,0,0,0,0],
-                [2,8,0,0,0,0,0,0,0]])
-grid2 = np.array([
-    [7,8,0,4,0,0,1,2,0],
-    [6,0,0,0,7,5,0,0,9],
-    [0,0,0,6,0,1,0,7,8],
-    [0,0,7,0,4,0,2,6,0],
-    [0,0,1,0,5,0,9,3,0],
-    [9,0,4,0,6,0,0,0,5],
-    [0,7,0,3,0,0,0,1,2],
-    [1,2,0,0,0,7,4,0,0],
-    [0,4,9,2,0,6,0,0,7]
-])
-grid3 = np.array([
-    [0,0,0,0,0,1,9,0,8],
-    [0,0,0,8,5,0,2,0,0],
-    [0,0,0,9,0,0,0,3,5],
-    [8,0,0,0,3,0,0,0,0],
-    [4,6,0,0,0,0,0,1,2],
-    [0,0,0,0,4,0,0,0,6],
-    [6,3,0,0,0,2,0,0,0],
-    [0,0,9,0,7,3,0,0,0],
-    [7,0,1,6,0,0,0,0,0]
-])
-
-print("Solving...")
-solved = solve(grid3)
-if solved == False:
-    print("The puzzle is not solvable")
-else:
-    print(np.array(solved))
-                
+import sys
+import solver
+import ui
+class SudokuSolver(QtWidgets.QMainWindow, ui.Ui_MainWindow):
+    def __init__(self, parent=None):
+        super(SudokuSolver, self).__init__(parent)
+        self.setupUi(self)
+        self.solveButton.clicked.connect(self.solve)
+        self.clearButton.clicked.connect(self.clearArray)
+        self.solver = solver.Solver()
+    def buildArray(self):
+        grid = []
+        cellCount = 1
+        for i in range(0,9):
+            grid.append([])
+            for j in range(0,9):
+                widget = self.findChild(QtWidgets.QTextEdit, f"text{cellCount}")
+                value = widget.toPlainText()
+                if value == "":
+                    grid[i].append(0)
+                else:
+                    grid[i].append(int(value))
+                cellCount += 1
+        grid = np.array(grid)
+        return grid
+    def displayArray(self, grid):
+        cellCount = 1
+        for i in range(0,9):
+            for j in grid[i]:
+                value = str(j)
+                widget = self.findChild(QtWidgets.QTextEdit, f"text{cellCount}")
+                widget.setPlainText(value)
+                widget.setAlignment(QtCore.Qt.AlignCenter)
+                cellCount += 1
+    def clearArray(self):
+        cellCount = 1
+        for i in range(0,9):
+            for j in range(0,9):
+                widget = self.findChild(QtWidgets.QTextEdit, f"text{cellCount}")
+                widget.setPlainText('')
+                widget.setAlignment(QtCore.Qt.AlignCenter)
+                cellCount += 1
+    def solve(self):
+        print("Solving...")
+        grid = self.buildArray()
+        self.solveButton.setEnabled(False)
+        self.clearButton.setEnabled(False)
+        solvedGrid = self.solver.solve(grid)
+        self.displayArray(solvedGrid)
+        self.solveButton.setEnabled(True)
+        self.clearButton.setEnabled(True)
+def main():
+    app = QtWidgets.QApplication(sys.argv)
+    window = SudokuSolver()
+    window.show()
+    app.exec_()
+if __name__ == '__main__':
+    main()
